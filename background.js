@@ -1,9 +1,18 @@
+importScripts('utils.js');
+
 chrome.runtime.onMessage.addListener(async (message) => {
   if (message.action !== 'export') return;
   try {
     const settings = await getSettings();
     validateSettings(settings);
-    const markdown = formatMarkdown(message.payload);
+    let issue = { ...message.payload };
+    if (settings.language) {
+      try {
+        issue.title = await translateText(issue.title, settings.language);
+        issue.description = await translateText(issue.description, settings.language);
+      } catch (e) { console.error('Translation failed', e); }
+    }
+    const markdown = formatMarkdown(issue);
     const pageUrl = await createNotionPage(settings, markdown);
     sendNotification('Export Successful', `Notion page created: ${pageUrl}`);
   } catch (error) {
@@ -13,7 +22,7 @@ chrome.runtime.onMessage.addListener(async (message) => {
 
 function getSettings() {
   return new Promise(resolve => {
-    chrome.storage.sync.get(['notionToken','notionDB'], resolve);
+    chrome.storage.sync.get(['notionToken','notionDB','language'], resolve);
   });
 }
 
@@ -23,19 +32,22 @@ function validateSettings({ notionToken, notionDB }) {
 }
 
 function formatMarkdown(issue) {
-  return `## 🧠 Story
+  const description = issue.description || '_No description provided_';
+  const labels = issue.labels.length ? issue.labels.join(', ') : 'None';
+  return `🧠 Story
 ${issue.title}
 
-## ❌ Current behavior
-_Describe the current behavior._
+❌ Current behavior
 
-## ✅ Expected behavior
-${issue.description}
+✅ Expected behavior
+${description}
 
-## 🧾 Metadata
-- Linear Issue: ${issue.url}
-- Status: ${issue.status}
-- Labels: ${issue.labels.join(', ')}`;
+🧾 Metadata
+Linear Issue: ${issue.url}
+
+Status: ${issue.status}
+
+Labels: ${labels}`;
 }
 
 async function createNotionPage({ notionToken, notionDB }, markdown) {
@@ -59,6 +71,8 @@ async function createNotionPage({ notionToken, notionDB }, markdown) {
   return data.url;
 }
 
+const transparentIcon = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMBAQIA+4sAAAAASUVORK5CYII=';
+
 function sendNotification(title, message) {
-  chrome.notifications.create({ type:'basic', iconUrl:'icons/icon48.png', title, message });
+  chrome.notifications.create({ type:'basic', iconUrl: transparentIcon, title, message });
 }
