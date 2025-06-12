@@ -1,7 +1,16 @@
+document.addEventListener('DOMContentLoaded', () => {
+  chrome.storage.sync.get(['notionToken','notionDB','language'], ({ notionToken='', notionDB='', language='' }) => {
+    document.getElementById('notionToken').value = notionToken;
+    document.getElementById('notionDB').value = notionDB;
+    document.getElementById('language').value = language;
+  });
+});
+
 document.getElementById('saveBtn').addEventListener('click', () => {
   const token = document.getElementById('notionToken').value.trim();
   const db = document.getElementById('notionDB').value.trim();
-  chrome.storage.sync.set({ notionToken: token, notionDB: db }, () => setStatus('Settings saved.'));
+  const language = document.getElementById('language').value.trim();
+  chrome.storage.sync.set({ notionToken: token, notionDB: db, language }, () => setStatus('Settings saved.'));
 });
 
 document.getElementById('testBtn').addEventListener('click', async () => {
